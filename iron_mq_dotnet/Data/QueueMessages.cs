@@ -5,6 +5,6 @@ namespace io.iron.ironmq.Data
     [Serializable]
     public class QueueMessages
     {
-        public Message[] messages{ get; set; }       
+        public Message[] Messages{ get; set; }       
     }
 }

@@ -1,6 +1,8 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Configuration;
 using System.Linq;
+using System.Threading;
 using io.iron.ironmq;
 using io.iron.ironmq.Data;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -166,6 +168,34 @@ namespace iron_mq_testing
             ClearQueue(q); 
             // At this point the queue should be empty
             q.clear();
+        }
+
+        [TestMethod]
+        public void ListQueuesTest()
+        {
+            Client c = new Client(_projectId, _token);
+            Queue q = c.queue("test-queue");
+            q.push("hello");
+            q.clear();
+            Assert.IsTrue(c.queues().Length > 0);
+        }
+
+        [TestMethod]
+        public void GetQueueMessageTimeoutTest()
+        {
+            TimeSpan timeout = TimeSpan.FromSeconds(1.0);
+            var networkLatency = 100;
+
+            Client c = new Client(_projectId, _token);
+            Queue q = c.queue("test-queue");
+            q.push("hello");
+            var message = q.get(timeout);
+            Thread.Sleep(timeout);
+            Thread.Sleep(networkLatency);
+            //should be back in queue now
+            var theSameMessage = q.get();
+            Assert.IsNotNull(theSameMessage);
+            Assert.AreEqual(theSameMessage.Id, message.Id);
         }
     }
 }

@@ -6,3 +6,4 @@ deploy/*
 *.suo
 *.cache
 TestResults/
+_[Rr]e[Ss]harper.*

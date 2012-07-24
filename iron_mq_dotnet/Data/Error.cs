@@ -5,6 +5,6 @@ namespace io.iron.ironmq.Data
     [Serializable]
     public class Error
     {       
-        public string msg { get; set; }
+        public string Message { get; set; }
     }
 }

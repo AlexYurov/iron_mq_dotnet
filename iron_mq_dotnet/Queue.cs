@@ -12,14 +12,14 @@ namespace io.iron.ironmq
     /// </summary>
     public class Queue
     {
-        private Client client = null;
-        private string name = null;
-        private JsonSerializerSettings settings = new JsonSerializerSettings() { NullValueHandling = NullValueHandling.Ignore, Formatting = Formatting.None, DefaultValueHandling = DefaultValueHandling.Ignore };
+        private readonly Client _client;
+        private readonly string _name;
+        private readonly JsonSerializerSettings _settings = new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore, Formatting = Formatting.None, DefaultValueHandling = DefaultValueHandling.Ignore };
 
         public Queue(Client client, string name)
         {
-            this.client = client;
-            this.name = name;
+            this._client = client;
+            this._name = name;
         }
 
         /// <summary>
@@ -30,8 +30,8 @@ namespace io.iron.ironmq
         public void clear()
         {
             string emptyJsonObject = "{}";
-            var response = client.post("queues/" + name + "/clear", emptyJsonObject);
-            var responseObject = JsonConvert.DeserializeObject<Dictionary<string, string>>(response,settings);
+            var response = _client.post("queues/" + _name + "/clear", emptyJsonObject);
+            var responseObject = JsonConvert.DeserializeObject<Dictionary<string, string>>(response, _settings);
             if (responseObject["msg"] != "Cleared")
             {
                 throw new Exception(string.Format("Unknown response from REST Endpoint : {0}", response));
@@ -47,9 +47,23 @@ namespace io.iron.ironmq
         /// <exception cref="System.IO.IOException">Thrown if there is an error accessing the IronMQ server.</exception>
         public Message get()
         {
-            string json = client.get("queues/" + name + "/messages");
-            QueueMessages queueResp = JsonConvert.DeserializeObject<QueueMessages>(json, settings);
-            return queueResp.messages.Length > 0 ? queueResp.messages[0] : null;
+            string json = _client.get("queues/" + _name + "/messages");
+            QueueMessages queueResp = JsonConvert.DeserializeObject<QueueMessages>(json, _settings);
+            return queueResp.Messages.Length > 0 ? queueResp.Messages[0] : null;
+        }
+
+        /// <summary>
+        /// Retrieves a Message from the queue. After timeout, item will be placed back onto queue.
+        /// </summary>
+        /// <param name="timeout">Specifies a time after which the message will be placed back onto the queue.</param>
+        /// <returns></returns>
+        /// <exception cref="System.Web.HttpException">Thown if the IronMQ service returns a status other than 200 OK. </exception>
+        /// <exception cref="System.IO.IOException">Thrown if there is an error accessing the IronMQ server.</exception>
+        public Message get(TimeSpan timeout)
+        {
+            string json = _client.get(string.Format("queues/{0}/messages?timeout={1}", _name, timeout.Seconds));
+            QueueMessages queueResp = JsonConvert.DeserializeObject<QueueMessages>(json, _settings);
+            return queueResp.Messages.Length > 0 ? queueResp.Messages[0] : null;
         }
 
         /// <summary>
@@ -59,11 +73,11 @@ namespace io.iron.ironmq
         /// <returns>An IList of messages</returns>
         /// <exception cref="System.Web.HttpException">Thown if the IronMQ service returns a status other than 200 OK. </exception>
         /// <exception cref="System.IO.IOException">Thrown if there is an error accessing the IronMQ server.</exception>
-        public IList<Message> get(int max = 1)
+        public IList<Message> get(int max)
         {
-            string json = client.get(string.Format("queues/{0}/messages?n={1}", name, max));
-            QueueMessages queueResp = JsonConvert.DeserializeObject<QueueMessages>(json,settings);
-            return queueResp.messages;
+            string json = _client.get(string.Format("queues/{0}/messages?n={1}", _name, max));
+            QueueMessages queueResp = JsonConvert.DeserializeObject<QueueMessages>(json, _settings);
+            return queueResp.Messages;
         }
 
         /// <summary>
@@ -74,7 +88,7 @@ namespace io.iron.ironmq
         /// <exception cref="System.IO.IOException">Thrown if there is an error accessing the IronMQ server.</exception>
         public void deleteMessage(String id)
         {
-            client.delete("queues/" + name + "/messages/" + id);
+            _client.delete("queues/" + _name + "/messages/" + id);
         }
 
 
@@ -103,7 +117,7 @@ namespace io.iron.ironmq
             push(msg, 0);
         }
 
-   
+
         /// <summary>
         /// Pushes a message onto the queue with a timeout
         /// </summary>
@@ -113,7 +127,7 @@ namespace io.iron.ironmq
         /// <exception cref="System.IO.IOException">Thrown if there is an error accessing the IronMQ server.</exception>
         public void push(String msg, long timeout)
         {
-            push(new string[] { msg }, timeout);
+            push(new[] { msg }, timeout);
         }
 
         /// <summary>
@@ -125,12 +139,14 @@ namespace io.iron.ironmq
         /// <exception cref="System.IO.IOException">Thrown if there is an error accessing the IronMQ server.</exception>
         public void push(IEnumerable<string> msgs, long timeout = 0, long delay = 0, long expires_in = 0)
         {
-            var json =  JsonConvert.SerializeObject(new QueueMessages()
+            var json = JsonConvert.SerializeObject(
+                new QueueMessages
                 {
-                    messages = msgs.Select(msg => new Message() { Body = msg, Timeout = timeout, Delay = delay, Expires_In = expires_in }).ToArray(),
-                }, settings);
-            client.post("queues/" + name + "/messages", json
-               );
+                    Messages = msgs.Select(msg => new Message { Body = msg, Timeout = timeout, Delay = delay, Expires_In = expires_in }).ToArray(),
+                }, 
+                _settings
+            );
+            _client.post("queues/" + _name + "/messages", json);
         }
     }
 }

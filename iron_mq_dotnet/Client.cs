@@ -1,16 +1,17 @@
-﻿using System.Net;
+﻿using System.Linq;
+using System.Net;
 using System.Web.Script.Serialization;
-
+using Newtonsoft.Json;
 using io.iron.ironmq.Data;
 
 namespace io.iron.ironmq
 {
     public class Client
     {
-        private const string        PROTO =         "https";
-        private const string        HOST =          "mq-aws-us-east-1.iron.io";
-        private const int           PORT =          443;
-        private const string        API_VERSION =   "1";
+        private const string PROTO = "https";
+        private const string HOST = "mq-aws-us-east-1.iron.io";
+        private const int PORT = 443;
+        private const string API_VERSION = "1";
 
         private string projectId = string.Empty;
         private string token = string.Empty;
@@ -18,7 +19,9 @@ namespace io.iron.ironmq
         public string Host { get; private set; }
         public int Port { get; private set; }
 
-        private JavaScriptSerializer serializer = new JavaScriptSerializer();
+        //private JavaScriptSerializer serializer = new JavaScriptSerializer();
+
+        private JsonSerializerSettings _settings = new JsonSerializerSettings() { NullValueHandling = NullValueHandling.Ignore, DefaultValueHandling = DefaultValueHandling.Ignore };
 
         /// <summary>
         /// Constructs a new Client using the specified project ID and token.
@@ -33,6 +36,8 @@ namespace io.iron.ironmq
             this.token = token;
             this.Host = host;
             this.Port = port;
+
+            //serializer.
         }
 
         /// <summary>
@@ -43,7 +48,7 @@ namespace io.iron.ironmq
         /// <returns></returns>
         public Queue queue(string name)
         {
-            return new Queue (this, name);
+            return new Queue(this, name);
         }
 
         /// <summary>
@@ -52,13 +57,16 @@ namespace io.iron.ironmq
         /// <param name="page">
         /// Queue list page
         /// </param>
-        public string[] queues (int page = 0)
+        public string[] queues(int page = 0)
         {
             string ep = "queues";
-            if (page != 0) {
-                ep += "?page=" + page.ToString ();
+            if (page != 0)
+            {
+                ep += "?page=" + page.ToString();
             }
-            return serializer.Deserialize<string[]> (@get (ep));
+            var response = @get(ep);
+            var details = JsonConvert.DeserializeObject<QueueDetails[]>(response, _settings);
+            return details.Select(item => item.Name).ToArray();
         }
 
         public string delete(string endpoint)
@@ -79,7 +87,7 @@ namespace io.iron.ironmq
         private string request(string method, string endpoint, string body)
         {
             string path = "/" + API_VERSION + "/projects/" + projectId + "/" + endpoint;
-            string uri = PROTO + "://" + this.Host + ":" + this.Port + path;
+            string uri = PROTO + "://" + Host + ":" + Port + path;
             HttpWebRequest request = (HttpWebRequest)HttpWebRequest.Create(uri);
             request.ContentType = "application/json";
             request.Headers.Add("Authorization", "OAuth " + token);
@@ -87,7 +95,7 @@ namespace io.iron.ironmq
             request.Method = method;
             if (body != null)
             {
-                using (System.IO.StreamWriter write = new System.IO.StreamWriter(request.GetRequestStream()))
+                using (var write = new System.IO.StreamWriter(request.GetRequestStream()))
                 {
                     write.Write(body);
                     write.Flush();
@@ -96,14 +104,14 @@ namespace io.iron.ironmq
 
             HttpWebResponse response = (HttpWebResponse)request.GetResponse();
             string json = string.Empty;
-            using (System.IO.StreamReader reader = new System.IO.StreamReader(response.GetResponseStream()))
+            using (var reader = new System.IO.StreamReader(response.GetResponseStream()))
             {
                 json = reader.ReadToEnd();
             }
             if (response.StatusCode != HttpStatusCode.OK)
             {
-                Error error = serializer.Deserialize<Error>(json);
-                throw new System.Web.HttpException((int)response.StatusCode, error.msg);
+                Error error = JsonConvert.DeserializeObject<Error>(json);
+                throw new System.Web.HttpException((int)response.StatusCode, error.Message);
             }
             return json;
         }
