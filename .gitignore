@@ -7,3 +7,4 @@ deploy/*
 *.cache
 TestResults/
 _[Rr]e[Ss]harper.*
+*.DotSettings.user
