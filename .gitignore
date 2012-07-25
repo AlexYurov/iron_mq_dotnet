@@ -8,3 +8,4 @@ deploy/*
 TestResults/
 _[Rr]e[Ss]harper.*
 *.DotSettings.user
+packages/*/*

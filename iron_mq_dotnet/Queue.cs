@@ -14,7 +14,7 @@ namespace io.iron.ironmq
     {
         private readonly Client _client;
         private readonly string _name;
-        private readonly JsonSerializerSettings _settings = new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore, Formatting = Formatting.None, DefaultValueHandling = DefaultValueHandling.Ignore };
+        private readonly JsonSerializerSettings _settings = new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore, DefaultValueHandling = DefaultValueHandling.Ignore };
 
         public Queue(Client client, string name)
         {
@@ -144,6 +144,7 @@ namespace io.iron.ironmq
                 {
                     Messages = msgs.Select(msg => new Message { Body = msg, Timeout = timeout, Delay = delay, Expires_In = expires_in }).ToArray(),
                 }, 
+                Formatting.None,
                 _settings
             );
             _client.post("queues/" + _name + "/messages", json);
